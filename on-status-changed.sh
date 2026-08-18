@@ -25,5 +25,19 @@ case "$mode" in
     ;;
 esac
 
-herdr pane run "$pane_id" "" >/dev/null 2>&1
-notify "Auto-accepted $pane_id"
+# Herdr's own detection manifest names which rule made it "blocked" —
+# bash_permission_prompt/generic_permission_prompt are the plain
+# do-you-want-to-proceed Yes/No tool-approval dialogs. Anything else
+# (multi-choice menus, workflow prompts, the broad legacy catch-all) is
+# left for a human instead of blindly sending Enter.
+rule_id="$(herdr agent explain "$pane_id" --json 2>/dev/null | jq -r '.matched_rule.id // empty')"
+
+case "$rule_id" in
+  bash_permission_prompt | generic_permission_prompt)
+    herdr pane run "$pane_id" "" >/dev/null 2>&1
+    notify "Auto-accepted $pane_id"
+    ;;
+  *)
+    notify "Auto-accept skipped on $pane_id (${rule_id:-unrecognized}) — needs a look"
+    ;;
+esac

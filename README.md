@@ -64,9 +64,46 @@ State shape:
 {"mode": "off" | "list" | "all", "panes": ["w1:p2", ...]}
 ```
 
+## What it will and won't accept
+
+A watched pane going `blocked` is not enough on its own — the prompt also has
+to look like a plain approval. Two checks, either one is enough:
+
+1. herdr's own detection names the matched rule as `bash_permission_prompt`
+   or `generic_permission_prompt` (`herdr agent explain <pane> --json`).
+2. Failing that, the visible text is a numbered menu whose first option is a
+   bare `1. Yes` and whose every option is a Yes/No variant.
+
+The second check exists because herdr's rules key on the question's wording,
+so a differently-worded approval — the network sandbox's "do you want to allow
+this connection?" — only hits a broad catch-all that also swallows genuine
+multi-choice menus.
+
+Accepted:
+
+```
+Do you want to allow this connection?
+❯ 1. Yes
+  2. Yes, and don't ask again for as.atlassian.com
+  3. No, and tell Claude what to do differently
+```
+
+Left alone (an option that isn't Yes/No means it's a real decision):
+
+```
+Which file do you want to edit?
+❯ 1. src/index.ts
+  2. src/app.ts
+```
+
+Skipped prompts raise a toast rather than being silently ignored.
+
 ## Caveats
 
 - The event hook fires globally, not scoped to your workspace — the plugin
   filters after the fact rather than herdr filtering before invoking it.
-- Auto-accepting is inherently blind: it hits Enter without reading what the
-  pane is actually asking. Only watch panes you'd trust to auto-approve.
+- The prompt check is a heuristic over rendered text. It's deliberately
+  conservative (unrecognized shape → skip), but it hits Enter without
+  understanding the question, so only watch panes you'd trust to auto-approve.
+- Matching runs under the system BSD `grep` in the plugin subprocess, so the
+  patterns are POSIX ERE — no `-P`/PCRE, no `\s`.

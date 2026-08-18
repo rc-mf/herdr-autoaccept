@@ -32,12 +32,22 @@ esac
 # left for a human instead of blindly sending Enter.
 rule_id="$(herdr agent explain "$pane_id" --json 2>/dev/null | jq -r '.matched_rule.id // empty')"
 
+is_safe=false
+
 case "$rule_id" in
-  bash_permission_prompt | generic_permission_prompt)
-    herdr pane run "$pane_id" "" >/dev/null 2>&1
-    notify "Auto-accepted $pane_id"
-    ;;
-  *)
-    notify "Auto-accept skipped on $pane_id (${rule_id:-unrecognized}) — needs a look"
-    ;;
+  bash_permission_prompt | generic_permission_prompt) is_safe=true ;;
 esac
+
+# Fall back to the structural check for prompts herdr's own rules miss
+# (e.g. the network-sandbox "do you want to allow this connection?" dialog),
+# which otherwise only match the broad legacy_no_prompt_blocker catch-all.
+if [ "$is_safe" != true ] && is_yes_no_menu "$pane_id"; then
+  is_safe=true
+fi
+
+if [ "$is_safe" = true ]; then
+  herdr pane run "$pane_id" "" >/dev/null 2>&1
+  notify "Auto-accepted $pane_id"
+else
+  notify "Auto-accept skipped on $pane_id (${rule_id:-unrecognized}) — needs a look"
+fi

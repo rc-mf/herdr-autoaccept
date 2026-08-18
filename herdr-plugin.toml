@@ -1,0 +1,46 @@
+id = "autoaccept"
+name = "Auto Accept"
+version = "0.1.0"
+min_herdr_version = "0.8.0"
+description = "Hit Enter automatically on panes you've opted in to watch when they go blocked."
+platforms = ["macos", "linux"]
+
+# Fires on every pane's status change, session-wide (Herdr doesn't filter this
+# at the manifest level). on-status-changed.sh does the filtering: only acts
+# on panes present in state.json's watchlist, or all panes if mode = "all".
+[[events]]
+on = "pane.agent_status_changed"
+command = ["bash", "on-status-changed.sh"]
+
+# Toggle the focused pane in/out of the watchlist.
+[[actions]]
+id = "toggle-watch"
+title = "Auto-accept: toggle watch on this pane"
+contexts = ["pane"]
+command = ["bash", "toggle-watch.sh"]
+
+[[actions]]
+id = "watch-all"
+title = "Auto-accept: watch ALL panes"
+contexts = ["global"]
+command = ["bash", "set-mode.sh", "all"]
+
+[[actions]]
+id = "watch-list"
+title = "Auto-accept: back to opt-in watchlist"
+contexts = ["global"]
+command = ["bash", "set-mode.sh", "list"]
+
+[[actions]]
+id = "off"
+title = "Auto-accept: turn off"
+contexts = ["global"]
+command = ["bash", "set-mode.sh", "off"]
+
+# Suggested keybind; add to your own config.toml [[keys.command]] to enable
+# (plugin-declared keybinds aren't auto-installed).
+[[keys.command]]
+key = "prefix+shift+a"
+type = "plugin_action"
+command = "autoaccept.toggle-watch"
+description = "Toggle auto-accept watch on this pane"
